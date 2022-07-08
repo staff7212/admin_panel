@@ -24,31 +24,70 @@ export default class Editor extends Component {
   }
 
   open(page) {
-    this.currentPage = `../${page}`;
-    this.iframe.load(this.currentPage, () => {
-      console.log('l');
-      const body = this.iframe.contentDocument.body;
-      let textNodes = []
+    this.currentPage = `../${page}?rnd=${Math.random()}`;
 
-      function recursy(element) {
-        element.childNodes.forEach(node => {
-          if(node.nodeName === "#text" && node.nodeValue.replace(/\s+/g, "").length > 0) {
-            textNodes.push(node);
-          } else {
-            recursy(node);
-          }
-        })
-      }
+    axios
+      .get(`../${page}`)
+      .then(res => this.parseStrToDON(res.data))
+      .then(this.wrapTextNodes)
+      .then(dom => {
+        this.virtualDom = dom;
+        return dom
+      })
+      .then(this.serializeDOMToString)
+      .then(html => axios.post("./api/saveTempPage.php", {html}))
+      .then(() => this.iframe.load("../temp.html"))
+      .then(() => this.enableEditing())
+  }
 
-      recursy(body);
-
-      textNodes.forEach(node => {
-        const wrapper = this.iframe.contentDocument.createElement('text-editor');
-        node.parentNode.replaceChild(wrapper, node);
-        wrapper.appendChild(node);
-        wrapper.contentEditable = 'true';
-      });
+  enableEditing() {
+    this.iframe.contentDocument.body.querySelectorAll("text-editor").forEach(element => {
+      element.contentEditable = "true";
+      element.addEventListener('input', () => {
+        this.onTextEdit(element);
+      })
     })
+  }
+
+  onTextEdit(element) {
+    const id = element.getAttribute("nodeid");
+    this.virtualDom.body.querySelector(`[nodeid="${id}"]`).innerHTML = element.innerHTML;
+  }
+
+  parseStrToDON(str) {
+    const parser = new DOMParser();
+    return parser.parseFromString(str, "text/html")
+  }
+
+  wrapTextNodes(dom) {
+    const body = dom.body;
+    let textNodes = []
+
+    function recursy(element) {
+      element.childNodes.forEach(node => {
+        if(node.nodeName === "#text" && node.nodeValue.replace(/\s+/g, "").length > 0) {
+          textNodes.push(node);
+        } else {
+          recursy(node);
+        }
+      })
+    }
+
+    recursy(body);
+
+    textNodes.forEach((node, i) => {
+      const wrapper = dom.createElement('text-editor');
+      node.parentNode.replaceChild(wrapper, node);
+      wrapper.appendChild(node);
+      wrapper.setAttribute("nodeid", i)
+    });
+
+    return dom
+  }
+
+  serializeDOMToString(dom) {
+    const serializer = new XMLSerializer();
+    return serializer.serializeToString(dom); 
   }
 
   loadPageList() {
@@ -72,22 +111,8 @@ export default class Editor extends Component {
   }
 
   render() {
-    // const {pageList} = this.state;
-    // const pages = pageList.map((page, index) => {
-    //   return (
-    //     <h1 key={index}>{page}
-    //       <a href="#" onClick={() => this.deletePage(page)}>(x)</a>
-    //     </h1>
-    //   )
-    // });
-
     return (
       <iframe src={this.currentPage} frameBorder="0"></iframe>
-      // <>
-      //   <input onChange={(e) => {this.setState({newPageName: e.target.value})}} type="text" />
-      //   <button onClick={() => this.createNewPage()}>Создать страницу</button>
-      //   {pages}
-      // </>
     )
   }
 }
