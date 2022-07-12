@@ -4,11 +4,14 @@ import axios from 'axios';
 import React, {Component} from 'react';
 import UIkit from 'uikit';
 
+
 import Panel from '../panel';
 import ConfirmModal from "../confirm-modal";
 import ChooseModal from "../choose-modal";
 import DOMHelper from '../../helpers/dom-helper';
 import EditorText from '../editor-text';
+import EditorMeta from '../editor-meta';
+
 import Spinner from '../spinner';
 
 export default class Editor extends Component {
@@ -158,6 +161,7 @@ export default class Editor extends Component {
         <ConfirmModal target={'modal-save'} method={this.save}/>
         <ChooseModal data={pageList} target={'modal-open'} redirect={this.init}/>
         <ChooseModal data={backupsList} target={'modal-backup'} redirect={this.restoreBackup}/>
+        {this.virtualDom ? <EditorMeta target={"modal-meta"} virtualDom={this.virtualDom}/> : null}
       </>
     )
   }
