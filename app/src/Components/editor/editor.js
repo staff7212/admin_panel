@@ -11,6 +11,7 @@ import ChooseModal from "../choose-modal";
 import DOMHelper from '../../helpers/dom-helper';
 import EditorText from '../editor-text';
 import EditorMeta from '../editor-meta';
+import EditorImages from '../editor-images';
 
 import Spinner from '../spinner';
 
@@ -53,6 +54,7 @@ export default class Editor extends Component {
       .get(`../${page}?rnd=${Math.random()}`)
       .then(res => DOMHelper.parseStrToDOM(res.data))
       .then(DOMHelper.wrapTextNodes)
+      .then(DOMHelper.wrapImages)
       .then(dom => {
         this.virtualDom = dom;
         return dom
@@ -72,6 +74,7 @@ export default class Editor extends Component {
     this.isLoading();
     const newDom = this.virtualDom.cloneNode(this.virtualDom);
     DOMHelper.unwrapTextNodes(newDom);
+    DOMHelper.unwrapImages(newDom);
     const html = DOMHelper.serializeDOMToString(newDom);
     await axios
       .post("./api/savePage.php", {pageName: this.currentPage, html})
@@ -90,6 +93,14 @@ export default class Editor extends Component {
 
       new EditorText(element, virtualElement);
     })
+
+    this.iframe.contentDocument.body.querySelectorAll("[editableimgid]").forEach(element => {
+
+      const id = element.getAttribute("editableimgid");
+      const virtualElement = this.virtualDom.body.querySelector(`[editableimgid="${id}"]`)
+
+      new EditorImages(element, virtualElement);
+    })
   }
 
   injectStyles() {
@@ -101,6 +112,10 @@ export default class Editor extends Component {
       }
       text-editor:focus {
         outline: 2px solid red;
+        outline-offser: 8px;
+      }
+      [editableimgid]:hover {
+        outline: 2px solid orange;
         outline-offser: 8px;
       }
     `;
@@ -154,6 +169,8 @@ export default class Editor extends Component {
       <>
         <iframe src="" frameBorder="0"></iframe>
 
+        <input id="img-upload" type="file" accept="image/*" style={{display: "none"}} />
+        
         {spinner}
 
         <Panel/>
